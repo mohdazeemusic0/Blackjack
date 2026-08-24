@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackjack — Accessible Card Game</title>
+<style>
+  :root{
+    --bg:#0b1f18;
+    --bg-alt:#0f2a20;
+    --felt:#123a29;
+    --panel:#132e24;
+    --panel-border:#2c5646;
+    --gold:#d9b25c;
+    --gold-bright:#f0cf7a;
+    --text:#f2ede1;
+    --text-dim:#c9beac;
+    --red:#e2665a;
+    --green:#7fbf8f;
+    --focus:#ffe27a;
+    --radius:14px;
+    --card-w:64px;
+    --card-h:92px;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    font-family:"Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background:radial-gradient(ellipse at top, var(--bg-alt), var(--bg) 70%);
+    color:var(--text);
+    min-height:100vh;
+    line-height:1.5;
+  }
+  body.large-text{font-size:1.2em;}
+  body.high-contrast{
+    --bg:#000000;
+    --bg-alt:#000000;
+    --felt:#000000;
+    --panel:#000000;
+    --panel-border:#ffffff;
+    --gold:#ffe100;
+    --gold-bright:#ffff33;
+    --text:#ffffff;
+    --text-dim:#ffffff;
+    --red:#ff6b6b;
+    --green:#7fff9f;
+    --focus:#00e5ff;
+  }
+  body.high-contrast .card{border-width:3px;}
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  }
+  body.reduced-motion *{animation:none !important; transition:none !important;}
+
+  .visually-hidden{
+    position:absolute !important;
+    width:1px;height:1px;
+    padding:0;margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;border:0;
+  }
+  .skip-link{
+    position:absolute;left:8px;top:-60px;
+    background:var(--gold-bright);color:#111;
+    padding:10px 16px;border-radius:8px;font-weight:700;
+    z-index:1000;transition:top .15s ease;
+  }
+  .skip-link:focus{top:8px;}
+
+  a,button,input,select,[tabindex]{
+    outline-offset:3px;
+  }
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{
+    outline:3px solid var(--focus);
+    outline-offset:3px;
+  }
+
+  header.app-header{
+    display:flex;flex-wrap:wrap;gap:10px;
+    align-items:center;justify-content:space-between;
+    padding:14px 18px;
+    background:var(--bg-alt);
+    border-bottom:2px solid var(--panel-border);
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand h1{
+    font-family:Georgia, "Times New Roman", serif;
+    font-size:1.5rem;margin:0;color:var(--gold-bright);
+    letter-spacing:1px;
+  }
+  .brand .suit-mark{font-size:1.6rem;color:var(--gold);}
+  .status-pills{display:flex;flex-wrap:wrap;gap:8px;}
+  .pill{
+    background:var(--panel);border:1px solid var(--panel-border);
+    border-radius:999px;padding:8px 14px;font-size:0.95rem;
+    display:flex;gap:6px;align-items:center;white-space:nowrap;
+  }
+  .pill strong{color:var(--gold-bright);}
+  .header-btns{display:flex;gap:8px;flex-wrap:wrap;}
+
+  button{
+    font:inherit;cursor:pointer;
+    border-radius:10px;border:2px solid var(--panel-border);
+    background:var(--panel);color:var(--text);
+    padding:10px 16px;min-height:44px;min-width:44px;
+    transition:background .12s ease, transform .08s ease;
+  }
+  button:hover{background:#1b4536;}
+  button:active{transform:scale(0.97);}
+  button.primary{
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+    color:#20160a;border-color:var(--gold);font-weight:700;
+  }
+  button.primary:hover{filter:brightness(1.08);}
+  button.danger{background:#5a2222;border-color:#a94444;}
+  button.danger:hover{background:#742b2b;}
+  button:disabled{opacity:0.45;cursor:not-allowed;}
+
+  main{
+    max-width:1100px;margin:0 auto;padding:18px;
+    display:flex;flex-direction:column;gap:18px;
+  }
+
+  .table-felt{
+    background:radial-gradient(ellipse at center, var(--felt), #0a1f16 85%);
+    border:3px solid var(--panel-border);
+    border-radius:20px;padding:20px;
+    display:flex;flex-direction:column;gap:22px;
+  }
+  .zone h2{
+    margin:0 0 8px 0;font-size:1.1rem;color:var(--gold-bright);
+    font-family:Georgia, serif;
+  }
+  .hand-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;list-style:none;padding:0;margin:0 0 8px 0;}
+  .card{
+    width:var(--card-w);height:var(--card-h);
+    background:#fffdf7;color:#111;border:2px solid #333;
+    border-radius:8px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    font-weight:700;font-size:1.3rem;flex-shrink:0;
+  }
+  .card.red{color:var(--red);}
+  .card.hidden-card{
+    background:repeating-linear-gradient(45deg, #2c5646, #2c5646 6px, #1a3a2c 6px, #1a3a2c 12px);
+    color:var(--gold-bright);font-size:0.85rem;text-align:center;
+  }
+  .hand-total{font-size:1rem;color:var(--text-dim);}
+  .hand-total strong{color:var(--text);font-size:1.15rem;}
+
+  .status-line{
+    background:var(--panel);border:1px solid var(--panel-border);
+    border-radius:10px;padding:12px 14px;min-height:1.4em;
+  }
+
+  .controls-panel{
+    background:var(--panel);border:1px solid var(--panel-border);
+    border-radius:var(--radius);padding:16px;
+    display:flex;flex-direction:column;gap:14px;
+  }
+  fieldset{border:1px solid var(--panel-border);border-radius:10px;padding:12px;margin:0;}
+  legend{padding:0 8px;color:var(--gold-bright);font-weight:600;}
+  .bet-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .bet-row input[type=number]{
+    font:inherit;padding:8px 10px;min-height:44px;width:120px;
+    border-radius:8px;border:2px solid var(--panel-border);
+    background:#0e2018;color:var(--text);
+  }
+  .action-row{display:flex;flex-wrap:wrap;gap:10px;}
+  .action-row button{flex:1 1 130px;}
+
+  dialog{
+    border:none;border-radius:16px;padding:0;color:var(--text);
+    background:var(--panel);max-width:560px;width:92vw;
+    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  }
+  dialog::backdrop{background:rgba(0,0,0,0.72);}
+  .dialog-inner{padding:22px;display:flex;flex-direction:column;gap:14px;max-height:82vh;overflow-y:auto;}
+  .dialog-inner h2{margin:0;font-family:Georgia,serif;color:var(--gold-bright);}
+  .dialog-close-row{display:flex;justify-content:flex-end;}
+  .option-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media (max-width:480px){.option-grid{grid-template-columns:1fr;}}
+  .option-card{
+    border:2px solid var(--panel-border);border-radius:12px;padding:14px;
+    background:#0e2018;text-align:left;
+  }
+  .option-card[aria-pressed="true"]{border-color:var(--gold-bright);background:#1c3b2b;}
+  .settings-grid{display:flex;flex-direction:column;gap:12px;}
+  .row-inline{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .slider-row{display:flex;align-items:center;gap:10px;}
+  input[type=range]{flex:1;min-width:120px;}
+
+  table{width:100%;border-collapse:collapse;}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid var(--panel-border);font-size:0.92rem;}
+  th{color:var(--gold-bright);}
+
+  .achv-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;}
+  .achv-item{
+    border:1px solid var(--panel-border);border-radius:10px;padding:10px 12px;
+    display:flex;justify-content:space-between;gap:10px;align-items:center;
+  }
+  .achv-item.locked{opacity:0.5;}
+  .badge{font-size:0.78rem;padding:3px 8px;border-radius:999px;background:#0e2018;border:1px solid var(--panel-border);}
+  .badge.unlocked{background:var(--gold);color:#20160a;font-weight:700;border-color:var(--gold);}
+
+  kbd{
+    background:#0e2018;border:1px solid var(--panel-border);border-radius:4px;
+    padding:1px 6px;font-family:monospace;
+  }
+  .shortcut-list{display:flex;flex-direction:column;gap:6px;}
+
+  footer{text-align:center;color:var(--text-dim);font-size:0.85rem;padding:20px;}
+
+  /* Dealer face (replaces spoken-text caption visually) */
+  .dealer-face-zone{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .dealer-face-wrap{
+    position:relative;width:min(150px, 34vw);aspect-ratio:1/1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .dealer-face-ring{
+    position:absolute;inset:-8px;border-radius:50%;
+    border:3px solid var(--gold);opacity:0;
+  }
+  .dealer-face-wrap.speaking .dealer-face-ring{
+    opacity:1;animation:ring-pulse 0.9s ease-in-out infinite;
+  }
+  @keyframes ring-pulse{
+    0%,100%{transform:scale(1);opacity:0.9;}
+    50%{transform:scale(1.08);opacity:0.35;}
+  }
+  .dealer-face{width:100%;height:100%;border-radius:50%;background:#0e2018;border:2px solid var(--panel-border);display:none;}
+  .dealer-face.active{display:block;}
+  .dealer-face .mouth{transform-origin:center;transition:transform .05s linear;}
+  .dealer-face-wrap.speaking .mouth{
+    animation:mouth-talk 0.32s ease-in-out infinite alternate;
+  }
+  @keyframes mouth-talk{
+    0%{transform:scaleY(1);}
+    100%{transform:scaleY(0.35);}
+  }
+  .speaking-indicator{display:flex;gap:4px;height:10px;align-items:flex-end;}
+  .speaking-indicator span{width:4px;background:var(--gold);border-radius:2px;height:4px;opacity:0.25;}
+  .dealer-face-wrap.speaking + .speaking-indicator span{opacity:1;animation:bar-bounce 0.6s ease-in-out infinite;}
+  .dealer-face-wrap.speaking + .speaking-indicator span:nth-child(2){animation-delay:0.12s;}
+  .dealer-face-wrap.speaking + .speaking-indicator span:nth-child(3){animation-delay:0.24s;}
+  @keyframes bar-bounce{
+    0%,100%{height:4px;}
+    50%{height:10px;}
+  }
+
+  @media (max-width:600px){
+    :root{--card-w:48px;--card-h:70px;}
+    header.app-header{padding:10px 12px;justify-content:center;text-align:center;}
+    .brand h1{font-size:1.2rem;}
+    .status-pills{justify-content:center;width:100%;}
+    .pill{font-size:0.82rem;padding:6px 10px;}
+    .header-btns{justify-content:center;width:100%;}
+    .header-btns button{flex:1 1 40%;font-size:0.85rem;padding:8px 10px;min-height:40px;}
+    main{padding:10px;gap:12px;}
+    .table-felt{padding:12px;gap:14px;border-radius:14px;}
+    .action-row{gap:8px;}
+    .action-row button{flex:1 1 45%;min-width:0;}
+    .bet-row{justify-content:center;}
+    .bet-row input[type=number]{width:90px;}
+    .dialog-inner{padding:14px;}
+  }
+  @media (max-width:360px){
+    :root{--card-w:40px;--card-h:60px;}
+    .card{font-size:1rem;}
+    .action-row button{flex:1 1 100%;}
+  }
+
+  .banner{
+    padding:14px;border-radius:12px;text-align:center;font-size:1.15rem;font-weight:700;
+  }
+  .banner.win{background:#1c3b2b;border:1px solid var(--green);color:var(--green);}
+  .banner.lose{background:#3b1c1c;border:1px solid var(--red);color:var(--red);}
+  .banner.push{background:#2a2a1c;border:1px solid var(--gold);color:var(--gold-bright);}
+  .banner.blackjack{background:#2b1c3b;border:1px solid #c79bff;color:#dcc4ff;}
+  .banner.bankrupt{background:#3b1c1c;border:2px solid var(--red);color:#ffd2d2;}
+  .banner.millionaire{background:#3b331c;border:2px solid var(--gold-bright);color:var(--gold-bright);}
+  .banner.levelup{background:#1c2f3b;border:2px solid #7fc8ff;color:#b9e2ff;}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to game controls</a>
+
+<div id="live-polite" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="live-assertive" class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
+<header class="app-header">
+  <div class="brand">
+    <span class="suit-mark" aria-hidden="true">♠</span>
+    <h1>Blackjack</h1>
+  </div>
+  <div class="status-pills" aria-hidden="true">
+    <span class="pill">Level: <strong id="pill-level">Easy</strong></span>
+    <span class="pill">Balance: <strong id="pill-balance">$100</strong></span>
+    <span class="pill">Bet: <strong id="pill-bet">$0</strong></span>
+    <span class="pill">Streak: <strong id="pill-streak">0</strong></span>
+  </div>
+  <div class="header-btns">
+    <button id="btn-repeat" type="button" aria-label="Repeat last announcement (shortcut R)">Repeat (R)</button>
+    <button id="btn-speech-toggle" type="button" aria-pressed="true" aria-label="Toggle speech (shortcut M)">Speech: On</button>
+    <button id="btn-history" type="button">History</button>
+    <button id="btn-achievements" type="button">Achievements</button>
+    <button id="btn-help" type="button">Help</button>
+    <button id="btn-settings" type="button">Settings</button>
+  </div>
+</header>
+
+<main id="main-content">
+
+  <section class="table-felt" aria-label="Blackjack table">
+
+    <div class="zone" aria-hidden="false">
+      <h2 id="dealer-heading">Dealer <span id="dealer-name-tag"></span></h2>
+      <ul class="hand-row" id="dealer-hand" aria-labelledby="dealer-heading" aria-describedby="dealer-total"></ul>
+      <p class="hand-total" id="dealer-total">Dealer total: —</p>
+    </div>
+
+    <div class="dealer-face-zone">
+      <div class="dealer-face-wrap" id="dealer-face-wrap" aria-hidden="true">
+        <div class="dealer-face-ring"></div>
+        <!-- Male dealer face -->
+        <svg id="dealer-face-male" class="dealer-face" viewBox="0 0 140 140" role="img" aria-hidden="true">
+          <circle cx="70" cy="70" r="68" fill="#12271e"/>
+          <path d="M22 96c0-30 21-52 48-52s48 22 48 52" fill="#12271e"/>
+          <ellipse cx="70" cy="72" rx="34" ry="38" fill="#d9a066"/>
+          <path d="M36 58c2-22 18-34 34-34s32 12 34 34c-6-6-16-10-34-10s-28 4-34 10z" fill="#2b1c14"/>
+          <path d="M40 96c6 10 18 16 30 16s24-6 30-16" fill="none" stroke="#a8703f" stroke-width="2" opacity="0.4"/>
+          <circle cx="56" cy="70" r="4" fill="#20160a"/>
+          <circle cx="84" cy="70" r="4" fill="#20160a"/>
+          <path d="M50 60c3-3 9-3 12 0" stroke="#2b1c14" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M78 60c3-3 9-3 12 0" stroke="#2b1c14" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M66 76c1 4 3 6 4 6s3-2 4-6" stroke="#a8703f" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path class="mouth" d="M56 92c6 5 22 5 28 0" stroke="#5c2a1a" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <rect x="40" y="112" width="60" height="28" fill="#12271e"/>
+          <path d="M62 112l8 14 8-14z" fill="#d9b25c"/>
+        </svg>
+        <!-- Female dealer face -->
+        <svg id="dealer-face-female" class="dealer-face" viewBox="0 0 140 140" role="img" aria-hidden="true">
+          <circle cx="70" cy="70" r="68" fill="#2b1730"/>
+          <path d="M24 100c-4-34 10-64 46-64s50 30 46 64c-4-14-10-20-16-24 2 10 0 18-4 18-2-10-8-16-16-18 0 8-4 14-10 14s-10-6-10-14c-8 2-14 8-16 18-4 0-6-8-4-18-6 4-12 10-16 24z" fill="#241018"/>
+          <ellipse cx="70" cy="74" rx="33" ry="37" fill="#e6b98a"/>
+          <circle cx="56" cy="72" r="4" fill="#20160a"/>
+          <circle cx="84" cy="72" r="4" fill="#20160a"/>
+          <path d="M48 61c3-4 10-4 13-1" stroke="#241018" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M79 60c3-3 10-3 13 1" stroke="#241018" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M66 78c1 4 3 6 4 6s3-2 4-6" stroke="#b3835a" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path class="mouth" d="M55 94c7 6 23 6 30 0" stroke="#9a2b3c" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <circle cx="34" cy="82" r="4" fill="#d9b25c"/>
+          <circle cx="106" cy="82" r="4" fill="#d9b25c"/>
+          <rect x="40" y="114" width="60" height="26" fill="#2b1730"/>
+          <path d="M40 114c10 8 50 8 60 0" stroke="#d9b25c" stroke-width="3" fill="none"/>
+        </svg>
+      </div>
+      <div class="speaking-indicator" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p id="dealer-speech-line" class="visually-hidden" role="status" aria-live="polite">Welcome to Blackjack. Choose your dealer and language to begin.</p>
+    </div>
+
+    <div class="zone">
+      <h2 id="player-heading">Your Hand</h2>
+      <ul class="hand-row" id="player-hand" aria-labelledby="player-heading" aria-describedby="player-total"></ul>
+      <p class="hand-total" id="player-total">Your total: —</p>
+    </div>
+
+    <div id="round-banner" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="controls-panel" aria-label="Betting controls">
+    <fieldset>
+      <legend>Place your bet</legend>
+      <div class="bet-row">
+        <button type="button" id="btn-bet-min">Min bet</button>
+        <button type="button" id="btn-bet-dec" aria-label="Decrease bet by 5 dollars">−$5</button>
+        <label for="bet-input" class="visually-hidden">Custom bet amount in dollars</label>
+        <input type="number" id="bet-input" min="5" step="5" value="10" inputmode="numeric">
+        <button type="button" id="btn-bet-inc" aria-label="Increase bet by 5 dollars">+$5</button>
+        <button type="button" id="btn-bet-max">Max bet</button>
+      </div>
+      <p id="bet-error" role="alert" class="visually-hidden"></p>
+    </fieldset>
+  </section>
+
+  <section class="controls-panel action-row" aria-label="Game actions">
+    <button type="button" id="btn-deal" class="primary">Deal (N)</button>
+    <button type="button" id="btn-hit" disabled>Hit (H)</button>
+    <button type="button" id="btn-stand" disabled>Stand (S)</button>
+    <button type="button" id="btn-double" disabled>Double Down (D)</button>
+    <button type="button" id="btn-read-balance">Read Balance (B)</button>
+    <button type="button" id="btn-read-cards">Read Cards (C)</button>
+  </section>
+
+</main>
+
+<footer>
+  Blackjack — a browser-only, offline card game. No data leaves your device.
+</footer>
+
+<!-- SETUP DIALOG -->
+<dialog id="dlg-setup" aria-labelledby="setup-title">
+  <div class="dialog-inner">
+    <h2 id="setup-title">Welcome — set up your game</h2>
+    <p>Choose a language and a dealer to begin. You can change these later in Settings.</p>
+
+    <fieldset>
+      <legend>Language / भाषा</legend>
+      <div class="option-grid" id="setup-language-group" role="group" aria-label="Choose language">
+        <button type="button" class="option-card" data-lang="en" aria-pressed="true">English</button>
+        <button type="button" class="option-card" data-lang="hi" aria-pressed="false">हिंदी (Hindi)</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Dealer</legend>
+      <div class="option-grid" id="setup-dealer-group" role="group" aria-label="Choose dealer">
+        <button type="button" class="option-card" data-dealer="male" aria-pressed="true">Male Dealer</button>
+        <button type="button" class="option-card" data-dealer="female" aria-pressed="false">Female Dealer</button>
+      </div>
+    </fieldset>
+
+    <div class="dialog-close-row">
+      <button type="button" class="primary" id="btn-setup-start">Start with $100</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- SETTINGS DIALOG -->
+<dialog id="dlg-settings" aria-labelledby="settings-title">
+  <div class="dialog-inner">
+    <h2 id="settings-title">Settings</h2>
+    <div class="settings-grid">
+
+      <fieldset>
+        <legend>Language / भाषा</legend>
+        <div class="option-grid" id="settings-language-group" role="group" aria-label="Choose language">
+          <button type="button" class="option-card" data-lang="en">English</button>
+          <button type="button" class="option-card" data-lang="hi">हिंदी (Hindi)</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Dealer</legend>
+        <div class="option-grid" id="settings-dealer-group" role="group" aria-label="Choose dealer">
+          <button type="button" class="option-card" data-dealer="male">Male Dealer</button>
+          <button type="button" class="option-card" data-dealer="female">Female Dealer</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Speech</legend>
+        <div class="row-inline">
+          <span id="lbl-speech-onoff">Speech announcements</span>
+          <button type="button" id="settings-speech-toggle" aria-pressed="true">On</button>
+        </div>
+        <div class="slider-row">
+          <label for="speech-rate">Speed</label>
+          <input type="range" id="speech-rate" min="0.6" max="1.6" step="0.1" value="1">
+        </div>
+        <div class="slider-row">
+          <label for="speech-volume">Volume</label>
+          <input type="range" id="speech-volume" min="0" max="1" step="0.1" value="1">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Sound effects</legend>
+        <div class="row-inline">
+          <span>Sound effects</span>
+          <button type="button" id="settings-sound-toggle" aria-pressed="true">On</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Visual accessibility</legend>
+        <div class="row-inline">
+          <span>High contrast mode</span>
+          <button type="button" id="settings-contrast-toggle" aria-pressed="false">Off</button>
+        </div>
+        <div class="row-inline">
+          <span>Large text mode</span>
+          <button type="button" id="settings-largetext-toggle" aria-pressed="false">Off</button>
+        </div>
+        <div class="row-inline">
+          <span>Reduce motion</span>
+          <button type="button" id="settings-motion-toggle" aria-pressed="false">Off</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Progress</legend>
+        <div class="row-inline">
+          <span>Reset all progress and start over</span>
+          <button type="button" class="danger" id="btn-reset-progress">Reset Progress</button>
+        </div>
+      </fieldset>
+    </div>
+    <div class="dialog-close-row">
+      <button type="button" class="primary" id="btn-settings-close">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ACHIEVEMENTS DIALOG -->
+<dialog id="dlg-achievements" aria-labelledby="achv-title">
+  <div class="dialog-inner">
+    <h2 id="achv-title">Achievements</h2>
+    <ul class="achv-list" id="achv-list"></ul>
+    <div class="dialog-close-row">
+      <button type="button" class="primary" id="btn-achv-close">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- HISTORY DIALOG -->
+<dialog id="dlg-history" aria-labelledby="history-title">
+  <div class="dialog-inner">
+    <h2 id="history-title">Game History</h2>
+    <button type="button" id="btn-read-history">Read recent rounds aloud</button>
+    <div style="overflow-x:auto;">
+      <table id="history-table">
+        <thead>
+          <tr><th scope="col">Round</th><th scope="col">Bet</th><th scope="col">Result</th><th scope="col">Your total</th><th scope="col">Dealer total</th><th scope="col">Change</th><th scope="col">Balance</th></tr>
+        </thead>
+        <tbody id="history-tbody"></tbody>
+      </table>
+    </div>
+    <p id="history-empty">No rounds played yet.</p>
+    <div class="dialog-close-row">
+      <button type="button" class="primary" id="btn-history-close">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- HELP DIALOG -->
+<dialog id="dlg-help" aria-labelledby="help-title">
+  <div class="dialog-inner">
+    <h2 id="help-title">How to play &amp; keyboard shortcuts</h2>
+    <p>Blackjack: get closer to 21 than the dealer without going over. Face cards count as 10, Aces count as 1 or 11, whichever helps you most.</p>
+    <p>You start on <strong>Easy</strong> mode. Each time your balance reaches that level's target, you automatically move up — Normal, Medium, Hard, and beyond — where the dealer hits on soft 17 and blackjack payouts tighten toward 6:5. Your current level is shown at the top of the screen.</p>
+    <div class="shortcut-list">
+      <p><kbd>H</kbd> — Hit</p>
+      <p><kbd>S</kbd> — Stand</p>
+      <p><kbd>D</kbd> — Double Down</p>
+      <p><kbd>B</kbd> — Read balance</p>
+      <p><kbd>C</kbd> — Read your cards</p>
+      <p><kbd>R</kbd> — Repeat last announcement</p>
+      <p><kbd>M</kbd> — Toggle speech on/off</p>
+      <p><kbd>P</kbd> — Pause/resume speech</p>
+      <p><kbd>N</kbd> — Start new round / deal</p>
+      <p><kbd>Escape</kbd> — Close menus and dialogs</p>
+    </div>
+    <p>Shortcuts are disabled while typing in a text field.</p>
+    <div class="dialog-close-row">
+      <button type="button" class="primary" id="btn-help-close">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   i18n STRINGS
+   ========================================================= */
+const STR = {
+en: {
+  welcome: (dealer) => `Welcome to Blackjack. Your dealer today is ${dealer}. You start with a balance of $100.`,
+  balance: (n) => `Your balance is $${n}.`,
+  betPlaced: (n) => `Your wager is $${n}.`,
+  betInvalidLow: (min) => `That bet is too low. The minimum bet is $${min}.`,
+  betInvalidHigh: () => `That bet is more than your current balance.`,
+  betInvalidEmpty: () => `Please enter a valid bet amount.`,
+  roundStart: () => `Round started.`,
+  dealerShows: (card) => `Dealer shows ${card}.`,
+  yourCards: (cards) => `You have ${cards}.`,
+  yourTotal: (n) => `Your total is ${n}.`,
+  dealerTotal: (n) => `Dealer's total is ${n}.`,
+  actionsAvailable: (list) => `Available actions: ${list}.`,
+  hit: () => `Hit.`,
+  stand: () => `Stand.`,
+  double: () => `Double down.`,
+  youDrew: (card) => `You drew ${card}.`,
+  dealerDrew: (card) => `Dealer drew ${card}.`,
+  blackjack: () => `Blackjack! You win 3 to 2.`,
+  bust: () => `Bust. Your total went over 21.`,
+  dealerBust: () => `Dealer busts.`,
+  win: (n) => `You win! You gained $${n}.`,
+  lose: (n) => `You lose $${n}.`,
+  push: () => `Push. Your wager is returned.`,
+  bankrupt: () => `You're bankrupt. Your balance is zero dollars.`,
+  millionaire: () => `Achievement unlocked: Millionaire! You've reached one million dollars.`,
+  achievementUnlocked: (name) => `Achievement unlocked: ${name}.`,
+  newRound: () => `Starting a new round.`,
+  speechOn: () => `Speech turned on.`,
+  speechOff: () => `Speech turned off.`,
+  paused: () => `Speech paused.`,
+  resumed: () => `Speech resumed.`,
+  settingsSaved: () => `Settings saved.`,
+  progressReset: () => `Progress has been reset. You start again with $100.`,
+  gameOverNoBet: () => `Place a bet and press Deal to start a round.`,
+  cardsRead: (dealerCard, yourCards, total) => `Dealer shows ${dealerCard}. You have ${yourCards}. Your total is ${total}.`,
+  noHistory: () => `No rounds have been played yet.`,
+  historyIntro: (n) => `Reading your last ${n} rounds.`,
+  levelComplete: (name) => `Level complete! Moving up to ${name} mode. The dealer plays a little tougher from here.`,
+  achievementNames: {
+    FIRST_WIN: "First Win",
+    HOT_STREAK: "Hot Streak",
+    HIGH_ROLLER: "High Roller",
+    MILLIONAIRE: "Millionaire",
+    BANKRUPT: "Bankrupt"
+  },
+  cardName: (rank, suit) => `${rankNameEn(rank)} of ${suitNameEn(suit)}`,
+  dealerLabel: (g) => g === "male" ? "Marcus" : "Elena"
+},
+hi: {
+  welcome: (dealer) => `ब्लैकजैक में आपका स्वागत है। आज आपके डीलर ${dealer} हैं। आप 100 डॉलर के बैलेंस के साथ शुरुआत करते हैं।`,
+  balance: (n) => `आपका बैलेंस ${n} डॉलर है।`,
+  betPlaced: (n) => `आपकी बेट ${n} डॉलर है।`,
+  betInvalidLow: (min) => `यह बेट बहुत कम है। न्यूनतम बेट ${min} डॉलर है।`,
+  betInvalidHigh: () => `यह बेट आपके मौजूदा बैलेंस से ज़्यादा है।`,
+  betInvalidEmpty: () => `कृपया एक सही बेट राशि डालें।`,
+  roundStart: () => `राउंड शुरू हुआ।`,
+  dealerShows: (card) => `डीलर के पास ${card} है।`,
+  yourCards: (cards) => `आपके कार्ड ${cards} हैं।`,
+  yourTotal: (n) => `आपका टोटल ${n} है।`,
+  dealerTotal: (n) => `डीलर का टोटल ${n} है।`,
+  actionsAvailable: (list) => `उपलब्ध विकल्प: ${list}।`,
+  hit: () => `हिट।`,
+  stand: () => `स्टैंड।`,
+  double: () => `डबल डाउन।`,
+  youDrew: (card) => `आपने ${card} खींचा।`,
+  dealerDrew: (card) => `डीलर ने ${card} खींचा।`,
+  blackjack: () => `ब्लैकजैक! आप 3 टू 2 जीत गए।`,
+  bust: () => `बस्ट। आपका टोटल 21 से ऊपर चला गया।`,
+  dealerBust: () => `डीलर बस्ट हो गया।`,
+  win: (n) => `आप जीत गए! आपको ${n} डॉलर मिले।`,
+  lose: (n) => `आप हार गए, ${n} डॉलर गए।`,
+  push: () => `पुश। आपकी बेट वापस कर दी गई है।`,
+  bankrupt: () => `आप दिवालिया हो गए हैं। आपका बैलेंस शून्य डॉलर है।`,
+  millionaire: () => `Achievement unlocked: Millionaire. आपने दस लाख डॉलर का लक्ष्य पूरा कर लिया है।`,
+  achievementUnlocked: (name) => `Achievement unlocked: ${name}।`,
+  newRound: () => `नया राउंड शुरू हो रहा है।`,
+  speechOn: () => `स्पीच चालू कर दी गई है।`,
+  speechOff: () => `स्पीच बंद कर दी गई है।`,
+  paused: () => `स्पीच रोक दी गई है।`,
+  resumed: () => `स्पीच फिर से शुरू हो गई है।`,
+  settingsSaved: () => `सेटिंग्स सेव हो गई हैं।`,
+  progressReset: () => `प्रगति रीसेट कर दी गई है। आप फिर से 100 डॉलर के साथ शुरू करते हैं।`,
+  gameOverNoBet: () => `राउंड शुरू करने के लिए एक बेट लगाएं और Deal दबाएं।`,
+  cardsRead: (dealerCard, yourCards, total) => `डीलर के पास ${dealerCard} है। आपके कार्ड ${yourCards} हैं। आपका टोटल ${total} है।`,
+  noHistory: () => `अभी तक कोई राउंड नहीं खेला गया है।`,
+  historyIntro: (n) => `आपके पिछले ${n} राउंड सुनाए जा रहे हैं।`,
+  levelComplete: (name) => `लेवल पूरा हुआ! अब आप ${name} मोड में जा रहे हैं। अब डीलर थोड़ा मुश्किल खेलेगा।`,
+  achievementNames: {
+    FIRST_WIN: "पहली जीत",
+    HOT_STREAK: "हॉट स्ट्रीक",
+    HIGH_ROLLER: "हाई रोलर",
+    MILLIONAIRE: "मिलियनेयर",
+    BANKRUPT: "दिवालिया"
+  },
+  cardName: (rank, suit) => `${rankNameEn(rank)} of ${suitNameEn(suit)}`,
+  dealerLabel: (g) => g === "male" ? "अर्जुन" : "प्रिया"
+}
+};
+
+function rankNameEn(rank){
+  const names = {A:"Ace", J:"Jack", Q:"Queen", K:"King"};
+  return names[rank] || rank;
+}
+function suitNameEn(suit){
+  const names = {S:"Spades", H:"Hearts", D:"Diamonds", C:"Clubs"};
+  return names[suit];
+}
+
+/* =========================================================
+   DEALER DIALOGUE BANKS (flavor only — never affects logic)
+   ========================================================= */
+const DEALER_LINES = {
+en: {
+  male: {
+    welcome: ["Alright, let's see what you've got tonight.", "Take a seat. The cards don't care about nerves.", "Marcus here. Try to keep up."],
+    bet: ["Interesting choice. That's a confident bet.", "Bold. I like it.", "Careful now, that's real money.", "Nice round number. Superstitious?"],
+    deal: ["Cards are out. Let's see how you handle this one.", "Here we go.", "Take a good look before you decide anything."],
+    risky: ["You're sitting on a tricky number. That's a dangerous neighborhood.", "This is the moment people either get brave or get careless.", "Sixteen, huh. Rough spot to be in."],
+    hit: ["Are you sure about that?", "Bold move.", "Don't say I didn't warn you.", "One more, coming right up."],
+    stand: ["Standing firm, I see.", "Playing it safe. Smart, or scared?", "Locked in."],
+    double: ["Doubling down — that's a statement.", "All in on one card, huh?", "That's bold. Let's see if it pays off."],
+    blackjack: ["Well, would you look at that.", "Blackjack. Beginner's luck?", "Nicely played."],
+    bust: ["Ouch. That one hurt to watch.", "Over the line. Happens to the best of us.", "Twenty-one and done, just not the way you wanted."],
+    win: ["Not bad at all.", "You earned that one.", "Enjoy it while it lasts."],
+    lose: ["House wins this round.", "Tough luck. Try again?", "That's the way the cards fall sometimes."],
+    push: ["A tie. Nobody wins, nobody loses.", "Even trade. Let's go again."],
+    filler: ["Don't let me distract you. Or maybe I already did.", "Take your time.", "I've seen worse hands turn into winners."]
+  },
+  female: {
+    welcome: ["Welcome to the table. I'm Elena, and I'll be dealing tonight.", "Good to see a new face. Let's have some fun.", "Take a breath. Then take a seat."],
+    bet: ["Ooh, confident opener.", "That's a spicy bet.", "Careful — I've seen that number backfire before.", "Steady does it."],
+    deal: ["Cards are in the air.", "Let's see what fate has planned.", "Here's your hand — make it count."],
+    risky: ["You're on sixteen. That's a coin flip if I ever saw one.", "This is where it gets interesting.", "Decisions, decisions."],
+    hit: ["Living dangerously, are we?", "Alright, one more for you.", "Are you sure you want another card?"],
+    stand: ["Playing it cool. I respect that.", "Standing pat. Confident.", "Alright, holding steady."],
+    double: ["Doubling down — I love the confidence.", "Big swing. Let's see it land.", "All or nothing, then."],
+    blackjack: ["Oh, look at you!", "Blackjack — well played.", "That's how it's done."],
+    bust: ["Oof. So close.", "That one got away from you.", "Over 21 — happens to everyone eventually."],
+    win: ["Nicely done.", "That's a win for you.", "Look at that bankroll grow."],
+    lose: ["The house takes this one.", "Better luck next round.", "That's blackjack for you."],
+    push: ["A push — we'll call it even.", "Tie game. Let's run it back."],
+    filler: ["Don't let me distract you. Or maybe I already did.", "No rush.", "I've seen comebacks from worse."]
+  }
+},
+hi: {
+  male: {
+    welcome: ["ठीक है, आज देखते हैं आपके पास क्या है।", "बैठ जाइए। कार्ड्स को नर्वस होने से कोई फर्क नहीं पड़ता।", "मैं अर्जुन हूँ, चलिए शुरू करते हैं।"],
+    bet: ["अच्छा जी, आज तो बड़े कॉन्फिडेंस के साथ बेट लगाई है।", "बोल्ड चॉइस, पसंद आई।", "संभल के, ये असली पैसा है।"],
+    deal: ["कार्ड्स आ गए हैं, देखते हैं आप इसे कैसे संभालते हैं।", "चलिए शुरू करते हैं।"],
+    risky: ["आपके पास sixteen है। अब फैसला थोड़ा मुश्किल है।", "यहीं पर लोग या तो बहादुर बनते हैं या लापरवाह।"],
+    hit: ["एक और कार्ड चाहिए? सोच लीजिए।", "बोल्ड मूव है।", "ठीक है, एक और कार्ड आ रहा है।"],
+    stand: ["स्टैंड कर रहे हैं, समझदारी है या डर?", "पक्का फैसला।"],
+    double: ["डबल डाउन — ये तो बड़ा बयान है।", "एक कार्ड पर सब कुछ दांव पर।"],
+    blackjack: ["वाह, ये तो कमाल हो गया।", "ब्लैकजैक! बढ़िया खेले।"],
+    bust: ["ओह, ये देखना मुश्किल था।", "लाइन के पार चले गए।"],
+    win: ["बुरा नहीं है।", "आपने ये जीत कमाई है।"],
+    lose: ["इस राउंड में हाउस जीता।", "अगली बार बेहतर किस्मत।"],
+    push: ["बराबरी। न कोई जीता, न कोई हारा।"],
+    filler: ["मैं आपको distract तो नहीं कर रहा ना?", "अपना समय लीजिए।"]
+  },
+  female: {
+    welcome: ["टेबल पर स्वागत है। मैं प्रिया हूँ, आज मैं डील करूंगी।", "नया चेहरा देखकर अच्छा लगा, मज़ा करते हैं।"],
+    bet: ["ओह, कॉन्फिडेंट शुरुआत।", "ये तो तीखी बेट है।"],
+    deal: ["कार्ड्स हवा में हैं।", "देखते हैं किस्मत ने क्या सोचा है।"],
+    risky: ["आपके पास sixteen है। ये तो सिक्का उछालने जैसा है।", "यहीं से मज़ा शुरू होता है।"],
+    hit: ["थोड़ा खतरा उठा रहे हैं?", "ठीक है, एक और कार्ड आपके लिए।"],
+    stand: ["शांति से खेल रहे हैं, इज़्ज़त है इसके लिए।"],
+    double: ["डबल डाउन — कॉन्फिडेंस पसंद आया।"],
+    blackjack: ["वाह, देखिए तो ज़रा!", "ब्लैकजैक — बढ़िया खेला।"],
+    bust: ["ओह, बस थोड़ी दूर रह गए।"],
+    win: ["बढ़िया खेला।", "ये जीत आपकी है।"],
+    lose: ["इस बार हाउस जीता।", "अगली बार बेहतर किस्मत।"],
+    push: ["पुश — बराबरी मानते हैं।"],
+    filler: ["मैं आपको distract तो नहीं कर रहा ना?", "जल्दी नहीं है।"]
+  }
+}
+};
+
+const VOICE_GENDER_HINTS = {
+  male: ["male","david","mark","daniel","alex","fred","tom","arthur","george","james","ravi","rishi","aaron","guy","matthew","brian","eric","oliver","hemant","prabhat","gordon"],
+  female: ["female","zira","susan","samantha","victoria","karen","allison","moira","tessa","fiona","lekha","kalpana","veena","heera","salli","joanna","kimberly","amy","emma","ava","sonia","neerja","priya","serena"]
+};
+
+function pickLine(lang, gender, key){
+  const bank = DEALER_LINES[lang] && DEALER_LINES[lang][gender] && DEALER_LINES[lang][gender][key];
+  if(!bank || !bank.length) return "";
+  return bank[Math.floor(Math.random()*bank.length)];
+}
+
+/* =========================================================
+   STORAGE MANAGER
+   ========================================================= */
+const StorageManager = {
+  prefix: "bj_",
+  get(key, fallback){
+    try{
+      const raw = localStorage.getItem(this.prefix + key);
+      if(raw === null || raw === undefined) return fallback;
+      return JSON.parse(raw);
+    }catch(e){
+      return fallback;
+    }
+  },
+  set(key, value){
+    try{
+      localStorage.setItem(this.prefix + key, JSON.stringify(value));
+      return true;
+    }catch(e){
+      return false;
+    }
+  },
+  remove(key){
+    try{ localStorage.removeItem(this.prefix + key); }catch(e){}
+  }
+};
+
+/* =========================================================
+   GAME STATE
+   ========================================================= */
+const GameState = {
+  balance: 100,
+  bet: 10,
+  language: "en",
+  dealerGender: "male",
+  speechOn: true,
+  speechRate: 1,
+  speechVolume: 1,
+  soundOn: true,
+  highContrast: false,
+  largeText: false,
+  reducedMotion: false,
+  streak: 0,
+  achievements: { FIRST_WIN:false, HOT_STREAK:false, HIGH_ROLLER:false, MILLIONAIRE:false, BANKRUPT:false },
+  history: [],
+  roundCount: 0,
+  setupDone: false,
+  currentLevelIndex: 0,
+
+  deck: [],
+  playerHand: [],
+  dealerHand: [],
+  roundActive: false,
+  dealerHoleHidden: true,
+  lastDoubled: false,
+
+  MIN_BET: 5,
+  HIGH_ROLLER_TARGET: 500,
+  MILLIONAIRE_TARGET: 1000000,
+  HOT_STREAK_LEN: 3,
+
+  load(){
+    this.balance = StorageManager.get("balance", 100);
+    this.language = StorageManager.get("language", "en");
+    this.dealerGender = StorageManager.get("dealerGender", "male");
+    this.speechOn = StorageManager.get("speechOn", true);
+    this.speechRate = StorageManager.get("speechRate", 1);
+    this.speechVolume = StorageManager.get("speechVolume", 1);
+    this.soundOn = StorageManager.get("soundOn", true);
+    this.highContrast = StorageManager.get("highContrast", false);
+    this.largeText = StorageManager.get("largeText", false);
+    this.reducedMotion = StorageManager.get("reducedMotion", false);
+    this.streak = StorageManager.get("streak", 0);
+    this.achievements = StorageManager.get("achievements", { FIRST_WIN:false, HOT_STREAK:false, HIGH_ROLLER:false, MILLIONAIRE:false, BANKRUPT:false });
+    this.history = StorageManager.get("history", []);
+    this.roundCount = StorageManager.get("roundCount", 0);
+    this.setupDone = StorageManager.get("setupDone", false);
+    this.currentLevelIndex = StorageManager.get("currentLevelIndex", 0);
+    if(typeof this.balance !== "number" || isNaN(this.balance) || this.balance < 0) this.balance = 100;
+    if(typeof this.currentLevelIndex !== "number" || isNaN(this.currentLevelIndex) || this.currentLevelIndex < 0) this.currentLevelIndex = 0;
+  },
+  saveCore(){
+    StorageManager.set("balance", this.balance);
+    StorageManager.set("streak", this.streak);
+    StorageManager.set("achievements", this.achievements);
+    StorageManager.set("history", this.history.slice(-50));
+    StorageManager.set("roundCount", this.roundCount);
+    StorageManager.set("currentLevelIndex", this.currentLevelIndex);
+  },
+  savePrefs(){
+    StorageManager.set("language", this.language);
+    StorageManager.set("dealerGender", this.dealerGender);
+    StorageManager.set("speechOn", this.speechOn);
+    StorageManager.set("speechRate", this.speechRate);
+    StorageManager.set("speechVolume", this.speechVolume);
+    StorageManager.set("soundOn", this.soundOn);
+    StorageManager.set("highContrast", this.highContrast);
+    StorageManager.set("largeText", this.largeText);
+    StorageManager.set("reducedMotion", this.reducedMotion);
+    StorageManager.set("setupDone", this.setupDone);
+  }
+};
+
+/* =========================================================
+   DECK
+   ========================================================= */
+const Deck = {
+  RANKS: ["A","2","3","4","5","6","7","8","9","10","J","Q","K"],
+  SUITS: ["S","H","D","C"],
+
+  build(){
+    const cards = [];
+    for(const suit of this.SUITS){
+      for(const rank of this.RANKS){
+        let value;
+        if(rank === "A") value = 11;
+        else if(["J","Q","K"].includes(rank)) value = 10;
+        else value = parseInt(rank, 10);
+        cards.push({ rank, suit, value });
+      }
+    }
+    return cards;
+  },
+
+  shuffle(cards){
+    // Fisher-Yates using crypto for genuine randomness
+    const arr = cards.slice();
+    for(let i = arr.length - 1; i > 0; i--){
+      let j;
+      if(window.crypto && window.crypto.getRandomValues){
+        const buf = new Uint32Array(1);
+        window.crypto.getRandomValues(buf);
+        j = buf[0] % (i + 1);
+      } else {
+        j = Math.floor(Math.random() * (i + 1));
+      }
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  },
+
+  fresh(){
+    return this.shuffle(this.build());
+  }
+};
+
+/* =========================================================
+   BLACKJACK ENGINE
+   ========================================================= */
+const BlackjackEngine = {
+  drawCard(){
+    if(GameState.deck.length < 4){
+      GameState.deck = Deck.fresh();
+    }
+    return GameState.deck.pop();
+  },
+
+  handValue(hand){
+    let total = 0;
+    let aces = 0;
+    for(const c of hand){
+      total += c.value;
+      if(c.rank === "A") aces++;
+    }
+    while(total > 21 && aces > 0){
+      total -= 10;
+      aces--;
+    }
+    return total;
+  },
+
+  isBlackjack(hand){
+    return hand.length === 2 && this.handValue(hand) === 21;
+  },
+
+  isBust(hand){
+    return this.handValue(hand) > 21;
+  },
+
+  isSoft17(hand){
+    let sum = 0;
+    let aces = 0;
+    for(const c of hand){ sum += c.value; if(c.rank === "A") aces++; }
+    let acesLeft = aces;
+    while(sum > 21 && acesLeft > 0){ sum -= 10; acesLeft--; }
+    return sum === 17 && acesLeft > 0;
+  },
+
+  dealerShouldHit(hand){
+    const total = this.handValue(hand);
+    if(total < 17) return true;
+    if(total === 17 && LevelManager.current().dealerHitsSoft17 && this.isSoft17(hand)) return true;
+    return false;
+  },
+
+  cardLabel(card, lang){
+    return STR[lang].cardName(card.rank, card.suit);
+  },
+
+  cardSymbol(card){
+    const suitSymbols = {S:"♠", H:"♥", D:"♦", C:"♣"};
+    return `${card.rank}${suitSymbols[card.suit]}`;
+  }
+};
+
+/* =========================================================
+   SPEECH MANAGER
+   ========================================================= */
+const SpeechManager = {
+  supported: "speechSynthesis" in window,
+  voices: [],
+  lastText: "",
+
+  init(){
+    if(!this.supported) return;
+    const load = () => { this.voices = window.speechSynthesis.getVoices(); };
+    load();
+    if(window.speechSynthesis.onvoiceschanged !== undefined){
+      window.speechSynthesis.onvoiceschanged = load;
+    }
+  },
+
+  pickVoice(lang, gender){
+    if(!this.voices.length) this.voices = window.speechSynthesis.getVoices();
+    const prefix = lang === "hi" ? "hi" : "en";
+    let candidates = this.voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(prefix));
+    if(!candidates.length) candidates = this.voices.filter(v => v.lang && v.lang.toLowerCase().startsWith("en"));
+    if(!candidates.length) return null;
+    const hints = VOICE_GENDER_HINTS[gender] || VOICE_GENDER_HINTS.male;
+    const gendered = candidates.find(v => hints.some(h => v.name.toLowerCase().includes(h)));
+    return gendered || candidates[0];
+  },
+
+  speak(text){
+    this.lastText = text;
+    UI.setDealerLine(text);
+    if(!this.supported || !GameState.speechOn || !text){
+      UI.setSpeaking(false);
+      return;
+    }
+    try{
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      const voice = this.pickVoice(GameState.language, GameState.dealerGender);
+      if(voice) utter.voice = voice;
+      utter.lang = GameState.language === "hi" ? "hi-IN" : "en-US";
+      utter.rate = GameState.speechRate;
+      utter.volume = GameState.speechVolume;
+      utter.onstart = () => UI.setSpeaking(true);
+      utter.onend = () => UI.setSpeaking(false);
+      utter.onerror = () => UI.setSpeaking(false);
+      window.speechSynthesis.speak(utter);
+    }catch(e){ UI.setSpeaking(false); /* fail silently, text is still available to screen readers */ }
+  },
+
+  repeat(){
+    if(this.lastText) this.speak(this.lastText);
+  },
+
+  pauseResume(){
+    if(!this.supported) return;
+    if(window.speechSynthesis.speaking && !window.speechSynthesis.paused){
+      window.speechSynthesis.pause();
+      UI.setSpeaking(false);
+      Announce.polite(STR[GameState.language].paused());
+    } else if(window.speechSynthesis.paused){
+      window.speechSynthesis.resume();
+      UI.setSpeaking(true);
+      Announce.polite(STR[GameState.language].resumed());
+    }
+  },
+
+  cancel(){
+    if(this.supported) window.speechSynthesis.cancel();
+    UI.setSpeaking(false);
+  }
+};
+
+/* =========================================================
+   ANNOUNCE (screen reader live regions)
+   ========================================================= */
+const Announce = {
+  politeEl: null,
+  assertiveEl: null,
+  polite(text){
+    if(!this.politeEl) this.politeEl = document.getElementById("live-polite");
+    this.politeEl.textContent = "";
+    // small timeout ensures repeated identical text still gets announced
+    setTimeout(() => { this.politeEl.textContent = text; }, 30);
+  },
+  assertive(text){
+    if(!this.assertiveEl) this.assertiveEl = document.getElementById("live-assertive");
+    this.assertiveEl.textContent = "";
+    setTimeout(() => { this.assertiveEl.textContent = text; }, 30);
+  }
+};
+
+/* =========================================================
+   SOUND (simple WebAudio beeps, no external files)
+   ========================================================= */
+const SoundManager = {
+  ctx: null,
+  ensureCtx(){
+    if(!this.ctx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) this.ctx = new AC();
+    }
+    return this.ctx;
+  },
+  beep(freq, duration, type){
+    if(!GameState.soundOn) return;
+    const ctx = this.ensureCtx();
+    if(!ctx) return;
+    try{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type || "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(GameState.speechVolume * 0.15, ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.stop(ctx.currentTime + duration);
+    }catch(e){}
+  },
+  deal(){ this.beep(520, 0.1, "square"); },
+  click(){ this.beep(340, 0.06, "square"); },
+  win(){ this.beep(660, 0.15, "triangle"); setTimeout(()=>this.beep(880,0.18,"triangle"),140); },
+  lose(){ this.beep(220, 0.25, "sawtooth"); },
+  blackjack(){ this.beep(660,0.12,"triangle"); setTimeout(()=>this.beep(880,0.12,"triangle"),120); setTimeout(()=>this.beep(1046,0.2,"triangle"),240); },
+  achievement(){ this.beep(784,0.12,"triangle"); setTimeout(()=>this.beep(988,0.12,"triangle"),120); setTimeout(()=>this.beep(1318,0.25,"triangle"),240); }
+};
+
+/* =========================================================
+   ACHIEVEMENT MANAGER
+   ========================================================= */
+const AchievementManager = {
+  unlock(key){
+    if(GameState.achievements[key]) return;
+    GameState.achievements[key] = true;
+    GameState.saveCore();
+    const name = STR[GameState.language].achievementNames[key];
+    SoundManager.achievement();
+    Announce.assertive(STR[GameState.language].achievementUnlocked(name));
+    SpeechManager.speak(STR[GameState.language].achievementUnlocked(name));
+    UI.renderAchievements();
+  },
+  checkAfterRound(){
+    const s = GameState;
+    if(s.history.length && s.history[s.history.length-1].result === "win"){
+      this.unlock("FIRST_WIN");
+    }
+    if(s.streak >= s.HOT_STREAK_LEN){
+      this.unlock("HOT_STREAK");
+    }
+    if(s.balance >= s.HIGH_ROLLER_TARGET){
+      this.unlock("HIGH_ROLLER");
+    }
+    if(s.balance >= s.MILLIONAIRE_TARGET){
+      this.unlock("MILLIONAIRE");
+    }
+    if(s.balance <= 0){
+      this.unlock("BANKRUPT");
+    }
+  }
+};
+
+/* =========================================================
+   LEVEL MANAGER (difficulty progression)
+   ========================================================= */
+const BASE_LEVELS = [
+  { key:"easy",   label:{en:"Easy",   hi:"आसान"},   dealerHitsSoft17:false, blackjackPayout:1.5, target:300,     minBet:5  },
+  { key:"normal", label:{en:"Normal", hi:"नॉर्मल"}, dealerHitsSoft17:false, blackjackPayout:1.5, target:1000,    minBet:5  },
+  { key:"medium", label:{en:"Medium", hi:"मीडियम"}, dealerHitsSoft17:true,  blackjackPayout:1.5, target:5000,    minBet:10 },
+  { key:"hard",   label:{en:"Hard",   hi:"हार्ड"},   dealerHitsSoft17:true,  blackjackPayout:1.2, target:20000,   minBet:20 },
+  { key:"expert", label:{en:"Expert", hi:"एक्सपर्ट"}, dealerHitsSoft17:true, blackjackPayout:1.2, target:100000,  minBet:50 }
+];
+
+const LevelManager = {
+  levels: BASE_LEVELS.slice(),
+
+  ensureLevel(index){
+    while(this.levels.length <= index){
+      const prev = this.levels[this.levels.length - 1];
+      const n = this.levels.length;
+      this.levels.push({
+        key: "plus" + n,
+        label: { en: `Master ${n - 4}`, hi: `मास्टर ${n - 4}` },
+        dealerHitsSoft17: true,
+        blackjackPayout: 1.2,
+        target: Math.round(prev.target * 3),
+        minBet: prev.minBet * 2
+      });
+    }
+    return this.levels[index];
+  },
+
+  current(){
+    return this.ensureLevel(GameState.currentLevelIndex || 0);
+  },
+
+  applyToGameState(){
+    GameState.MIN_BET = this.current().minBet;
+  },
+
+  // Returns the new level object if the player advanced, else null.
+  checkAdvance(){
+    const lvl = this.current();
+    if(GameState.balance >= lvl.target){
+      GameState.currentLevelIndex = (GameState.currentLevelIndex || 0) + 1;
+      StorageManager.set("currentLevelIndex", GameState.currentLevelIndex);
+      this.applyToGameState();
+      return this.current();
+    }
+    return null;
+  }
+};
+
+/* =========================================================
+   UI MANAGER
+   ========================================================= */
+const UI = {
+  els: {},
+
+  cacheEls(){
+    const ids = ["pill-balance","pill-bet","pill-streak","pill-level","dealer-hand","dealer-total","dealer-name-tag",
+      "player-hand","player-total","dealer-speech-line","dealer-face-wrap","round-banner","bet-input","bet-error",
+      "btn-deal","btn-hit","btn-stand","btn-double","btn-bet-min","btn-bet-dec","btn-bet-inc","btn-bet-max",
+      "btn-speech-toggle","history-tbody","history-empty","achv-list"];
+    ids.forEach(id => this.els[id] = document.getElementById(id));
+  },
+
+  setDealerLine(text){
+    this.els["dealer-speech-line"].textContent = text;
+  },
+
+  setSpeaking(isSpeaking){
+    const wrap = this.els["dealer-face-wrap"];
+    if(!wrap) return;
+    wrap.classList.toggle("speaking", !!isSpeaking && !GameState.reducedMotion);
+  },
+
+  renderDealerFace(){
+    const male = document.getElementById("dealer-face-male");
+    const female = document.getElementById("dealer-face-female");
+    if(!male || !female) return;
+    male.classList.toggle("active", GameState.dealerGender === "male");
+    female.classList.toggle("active", GameState.dealerGender === "female");
+  },
+
+  renderPills(){
+    this.els["pill-balance"].textContent = `$${GameState.balance}`;
+    this.els["pill-bet"].textContent = `$${GameState.roundActive ? GameState.bet : 0}`;
+    this.els["pill-streak"].textContent = GameState.streak;
+    const lvl = LevelManager.current();
+    this.els["pill-level"].textContent = lvl.label[GameState.language] || lvl.label.en;
+  },
+
+  renderDealerName(){
+    const label = STR[GameState.language].dealerLabel(GameState.dealerGender);
+    this.els["dealer-name-tag"].textContent = `— ${label}`;
+    this.renderDealerFace();
+  },
+
+  cardEl(card, hidden){
+    const li = document.createElement("li");
+    if(hidden){
+      li.className = "card hidden-card";
+      li.textContent = "🂠";
+      li.setAttribute("aria-label", "Hidden card");
+      return li;
+    }
+    const isRed = card.suit === "H" || card.suit === "D";
+    li.className = "card" + (isRed ? " red" : "");
+    li.textContent = BlackjackEngine.cardSymbol(card);
+    li.setAttribute("aria-label", BlackjackEngine.cardLabel(card, GameState.language));
+    return li;
+  },
+
+  renderHands(){
+    const dHandEl = this.els["dealer-hand"];
+    const pHandEl = this.els["player-hand"];
+    dHandEl.innerHTML = "";
+    pHandEl.innerHTML = "";
+
+    GameState.dealerHand.forEach((card, idx) => {
+      const hide = GameState.dealerHoleHidden && idx === 1;
+      dHandEl.appendChild(this.cardEl(card, hide));
+    });
+    GameState.playerHand.forEach(card => {
+      pHandEl.appendChild(this.cardEl(card, false));
+    });
+
+    if(GameState.dealerHand.length){
+      if(GameState.dealerHoleHidden){
+        this.els["dealer-total"].innerHTML = `Dealer shows: <strong>${BlackjackEngine.cardLabel(GameState.dealerHand[0], GameState.language)}</strong>`;
+      } else {
+        this.els["dealer-total"].innerHTML = `Dealer total: <strong>${BlackjackEngine.handValue(GameState.dealerHand)}</strong>`;
+      }
+    } else {
+      this.els["dealer-total"].textContent = "Dealer total: —";
+    }
+
+    if(GameState.playerHand.length){
+      this.els["player-total"].innerHTML = `Your total: <strong>${BlackjackEngine.handValue(GameState.playerHand)}</strong>`;
+    } else {
+      this.els["player-total"].textContent = "Your total: —";
+    }
+  },
+
+  renderActionButtons(){
+    const active = GameState.roundActive;
+    this.els["btn-hit"].disabled = !active;
+    this.els["btn-stand"].disabled = !active;
+    this.els["btn-double"].disabled = !active || GameState.playerHand.length !== 2 || GameState.balance < GameState.bet;
+    this.els["btn-deal"].disabled = active;
+    document.getElementById("bet-input").disabled = active;
+    this.els["btn-bet-min"].disabled = active;
+    this.els["btn-bet-dec"].disabled = active;
+    this.els["btn-bet-inc"].disabled = active;
+    this.els["btn-bet-max"].disabled = active;
+  },
+
+  showBanner(type, text){
+    const banner = this.els["round-banner"];
+    banner.innerHTML = "";
+    if(!text) return;
+    const div = document.createElement("div");
+    div.className = "banner " + type;
+    div.textContent = text;
+    banner.appendChild(div);
+  },
+
+  clearBanner(){
+    this.els["round-banner"].innerHTML = "";
+  },
+
+  renderAll(){
+    this.renderPills();
+    this.renderDealerName();
+    this.renderHands();
+    this.renderActionButtons();
+    this.renderAchievements();
+    this.renderHistory();
+    document.getElementById("btn-speech-toggle").setAttribute("aria-pressed", String(GameState.speechOn));
+    document.getElementById("btn-speech-toggle").textContent = "Speech: " + (GameState.speechOn ? "On" : "Off");
+  },
+
+  renderAchievements(){
+    const list = this.els["achv-list"];
+    if(!list) return;
+    list.innerHTML = "";
+    const names = STR[GameState.language].achievementNames;
+    const descriptions = {
+      FIRST_WIN: "Win your first round.",
+      HOT_STREAK: `Win ${GameState.HOT_STREAK_LEN} rounds in a row.`,
+      HIGH_ROLLER: `Reach a balance of $${GameState.HIGH_ROLLER_TARGET}.`,
+      MILLIONAIRE: "Reach a balance of $1,000,000.",
+      BANKRUPT: "Reach a balance of $0."
+    };
+    Object.keys(names).forEach(key => {
+      const unlocked = !!GameState.achievements[key];
+      const li = document.createElement("li");
+      li.className = "achv-item" + (unlocked ? "" : " locked");
+      li.innerHTML = `<span><strong>${names[key]}</strong><br><small>${descriptions[key]}</small></span>
+        <span class="badge ${unlocked ? "unlocked" : ""}">${unlocked ? "Unlocked" : "Locked"}</span>`;
+      list.appendChild(li);
+    });
+  },
+
+  renderHistory(){
+    const tbody = this.els["history-tbody"];
+    const empty = this.els["history-empty"];
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    if(!GameState.history.length){
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+    const rows = GameState.history.slice(-50).reverse();
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      const change = r.change >= 0 ? `+$${r.change}` : `-$${Math.abs(r.change)}`;
+      tr.innerHTML = `<td>${r.round}</td><td>$${r.bet}</td><td>${r.result}</td><td>${r.playerTotal}</td><td>${r.dealerTotal}</td><td>${change}</td><td>$${r.balanceAfter}</td>`;
+      tbody.appendChild(tr);
+    });
+  },
+
+  applyVisualPrefs(){
+    document.body.classList.toggle("high-contrast", GameState.highContrast);
+    document.body.classList.toggle("large-text", GameState.largeText);
+    document.body.classList.toggle("reduced-motion", GameState.reducedMotion);
+  }
+};
+
+/* =========================================================
+   ROUND / GAME FLOW
+   ========================================================= */
+const Round = {
+
+  validateBet(amount){
+    const L = STR[GameState.language];
+    if(amount === null || amount === undefined || isNaN(amount) || amount === ""){
+      return { ok:false, msg: L.betInvalidEmpty() };
+    }
+    amount = Math.floor(amount);
+    if(amount < GameState.MIN_BET){
+      return { ok:false, msg: L.betInvalidLow(GameState.MIN_BET) };
+    }
+    if(amount > GameState.balance){
+      return { ok:false, msg: L.betInvalidHigh() };
+    }
+    return { ok:true, amount };
+  },
+
+  startRound(){
+    const L = STR[GameState.language];
+    const raw = parseInt(document.getElementById("bet-input").value, 10);
+    const check = this.validateBet(raw);
+    const errEl = document.getElementById("bet-error");
+    if(!check.ok){
+      errEl.textContent = check.msg;
+      errEl.classList.remove("visually-hidden");
+      Announce.assertive(check.msg);
+      SpeechManager.speak(check.msg);
+      return;
+    }
+    errEl.textContent = "";
+    errEl.classList.add("visually-hidden");
+
+    GameState.bet = check.amount;
+    GameState.balance -= GameState.bet;
+    GameState.roundActive = true;
+    GameState.dealerHoleHidden = true;
+    GameState.lastDoubled = false;
+    GameState.roundCount += 1;
+    UI.clearBanner();
+
+    if(!GameState.deck || GameState.deck.length < 15){
+      GameState.deck = Deck.fresh();
+    }
+
+    GameState.playerHand = [BlackjackEngine.drawCard(), BlackjackEngine.drawCard()];
+    GameState.dealerHand = [BlackjackEngine.drawCard(), BlackjackEngine.drawCard()];
+
+    SoundManager.deal();
+    UI.renderAll();
+    GameState.saveCore();
+
+    const dealerCardLabel = BlackjackEngine.cardLabel(GameState.dealerHand[0], GameState.language);
+    const playerCardsLabel = GameState.playerHand.map(c => BlackjackEngine.cardLabel(c, GameState.language)).join(GameState.language === "hi" ? " और " : " and ");
+    const total = BlackjackEngine.handValue(GameState.playerHand);
+    const actionsList = GameState.language === "hi" ? "हिट, स्टैंड, डबल डाउन" : "Hit, Stand, Double Down";
+
+    const parts = [
+      L.roundStart(),
+      L.betPlaced(GameState.bet),
+      L.dealerShows(dealerCardLabel),
+      L.yourCards(playerCardsLabel),
+      L.yourTotal(total),
+      L.actionsAvailable(actionsList)
+    ];
+
+    if(BlackjackEngine.isBlackjack(GameState.playerHand)){
+      this.finishRound("blackjack");
+      return;
+    }
+
+    const dealerLine = pickLine(GameState.language, GameState.dealerGender, "bet");
+    SpeechManager.speak(parts.join(" ") + (dealerLine ? " " + dealerLine : ""));
+  },
+
+  playerHit(){
+    if(!GameState.roundActive) return;
+    const L = STR[GameState.language];
+    const card = BlackjackEngine.drawCard();
+    GameState.playerHand.push(card);
+    SoundManager.deal();
+    UI.renderAll();
+
+    const total = BlackjackEngine.handValue(GameState.playerHand);
+    const cardLabel = BlackjackEngine.cardLabel(card, GameState.language);
+    let msg = `${L.hit()} ${L.youDrew(cardLabel)} ${L.yourTotal(total)}`;
+
+    if(BlackjackEngine.isBust(GameState.playerHand)){
+      this.finishRound("bust");
+      return;
+    }
+    if(total === 16){
+      const line = pickLine(GameState.language, GameState.dealerGender, "risky");
+      if(line) msg += " " + line;
+    }
+    SpeechManager.speak(msg);
+    GameState.saveCore();
+  },
+
+  playerStand(){
+    if(!GameState.roundActive) return;
+    const L = STR[GameState.language];
+    SpeechManager.speak(L.stand());
+    this.dealerPlay();
+  },
+
+  playerDouble(){
+    if(!GameState.roundActive) return;
+    if(GameState.playerHand.length !== 2 || GameState.balance < GameState.bet) return;
+    const L = STR[GameState.language];
+    GameState.balance -= GameState.bet;
+    GameState.bet *= 2;
+    GameState.lastDoubled = true;
+    const card = BlackjackEngine.drawCard();
+    GameState.playerHand.push(card);
+    SoundManager.deal();
+    UI.renderAll();
+
+    const total = BlackjackEngine.handValue(GameState.playerHand);
+    const cardLabel = BlackjackEngine.cardLabel(card, GameState.language);
+    const dealerLine = pickLine(GameState.language, GameState.dealerGender, "double");
+    let msg = `${L.double()} ${L.youDrew(cardLabel)} ${L.yourTotal(total)}`;
+    if(dealerLine) msg += " " + dealerLine;
+    SpeechManager.speak(msg);
+    GameState.saveCore();
+
+    if(BlackjackEngine.isBust(GameState.playerHand)){
+      this.finishRound("bust");
+      return;
+    }
+    setTimeout(() => this.dealerPlay(), 900);
+  },
+
+  dealerPlay(){
+    const L = STR[GameState.language];
+    GameState.dealerHoleHidden = false;
+    UI.renderHands();
+
+    const revealMsg = L.dealerTotal(BlackjackEngine.handValue(GameState.dealerHand));
+    let spokenParts = [revealMsg];
+
+    const drawLoop = () => {
+      if(BlackjackEngine.isBust(GameState.playerHand)){
+        this.finishRound("bust");
+        return;
+      }
+      if(BlackjackEngine.dealerShouldHit(GameState.dealerHand)){
+        const card = BlackjackEngine.drawCard();
+        GameState.dealerHand.push(card);
+        SoundManager.deal();
+        UI.renderHands();
+        spokenParts.push(L.dealerDrew(BlackjackEngine.cardLabel(card, GameState.language)));
+        spokenParts.push(L.dealerTotal(BlackjackEngine.handValue(GameState.dealerHand)));
+        setTimeout(drawLoop, 700);
+      } else {
+        SpeechManager.speak(spokenParts.join(" "));
+        setTimeout(() => this.settle(), 600);
+      }
+    };
+    drawLoop();
+  },
+
+  finishRound(outcome){
+    // outcome: "blackjack" | "bust" (player-side immediate outcomes)
+    GameState.dealerHoleHidden = false;
+    UI.renderHands();
+    if(outcome === "blackjack"){
+      this.settle();
+    } else if(outcome === "bust"){
+      this.settle();
+    }
+  },
+
+  settle(){
+    const L = STR[GameState.language];
+    const playerTotal = BlackjackEngine.handValue(GameState.playerHand);
+    const dealerTotal = BlackjackEngine.handValue(GameState.dealerHand);
+    const playerBJ = BlackjackEngine.isBlackjack(GameState.playerHand);
+    const dealerBJ = BlackjackEngine.isBlackjack(GameState.dealerHand);
+    const playerBust = BlackjackEngine.isBust(GameState.playerHand);
+    const dealerBust = BlackjackEngine.isBust(GameState.dealerHand);
+
+    let result, change, bannerType, bannerText;
+    let speech = [];
+
+    if(playerBust){
+      result = "loss"; change = 0; // bet already deducted, nothing returned
+      bannerType = "lose"; bannerText = L.bust();
+      speech.push(L.bust());
+      GameState.streak = 0;
+    } else if(playerBJ && !dealerBJ){
+      const payout = Math.floor(GameState.bet * LevelManager.current().blackjackPayout);
+      GameState.balance += GameState.bet + payout;
+      result = "blackjack"; change = payout;
+      bannerType = "blackjack"; bannerText = L.blackjack();
+      speech.push(L.blackjack());
+      GameState.streak += 1;
+    } else if(playerBJ && dealerBJ){
+      GameState.balance += GameState.bet;
+      result = "push"; change = 0;
+      bannerType = "push"; bannerText = L.push();
+      speech.push(L.push());
+    } else if(dealerBust){
+      GameState.balance += GameState.bet * 2;
+      result = "win"; change = GameState.bet;
+      bannerType = "win"; bannerText = L.win(GameState.bet);
+      speech.push(L.dealerBust());
+      speech.push(L.win(GameState.bet));
+      GameState.streak += 1;
+    } else if(playerTotal > dealerTotal){
+      GameState.balance += GameState.bet * 2;
+      result = "win"; change = GameState.bet;
+      bannerType = "win"; bannerText = L.win(GameState.bet);
+      speech.push(L.win(GameState.bet));
+      GameState.streak += 1;
+    } else if(playerTotal === dealerTotal){
+      GameState.balance += GameState.bet;
+      result = "push"; change = 0;
+      bannerType = "push"; bannerText = L.push();
+      speech.push(L.push());
+    } else {
+      result = "loss"; change = 0;
+      bannerType = "lose"; bannerText = L.lose(GameState.bet);
+      speech.push(L.lose(GameState.bet));
+      GameState.streak = 0;
+    }
+
+    const netChange = change - (result === "loss" ? GameState.bet : 0);
+
+    GameState.history.push({
+      round: GameState.roundCount,
+      bet: GameState.bet,
+      result: result,
+      playerTotal: playerTotal,
+      dealerTotal: dealerTotal,
+      change: result === "loss" ? -GameState.bet : change,
+      balanceAfter: GameState.balance
+    });
+
+    const dealerReaction = pickLine(GameState.language, GameState.dealerGender,
+      result === "loss" ? "lose" : (result === "push" ? "push" : (result === "blackjack" ? "blackjack" : "win")));
+    if(dealerReaction) speech.push(dealerReaction);
+
+    if(result === "win" || result === "blackjack") SoundManager.win();
+    else if(result === "loss") SoundManager.lose();
+    if(result === "blackjack") SoundManager.blackjack();
+
+    UI.showBanner(bannerType, bannerText);
+    Announce.assertive(bannerText);
+    SpeechManager.speak(speech.join(" "));
+
+    GameState.roundActive = false;
+    UI.renderAll();
+    GameState.saveCore();
+
+    AchievementManager.checkAfterRound();
+
+    const advancedLevel = LevelManager.checkAdvance();
+    if(advancedLevel){
+      const levelName = advancedLevel.label[GameState.language] || advancedLevel.label.en;
+      const msg = L.levelComplete(levelName);
+      setTimeout(() => {
+        UI.showBanner("levelup", msg);
+        Announce.assertive(msg);
+        SpeechManager.speak(msg);
+        UI.renderPills();
+        const betInput = document.getElementById("bet-input");
+        betInput.min = String(GameState.MIN_BET);
+      }, 2200);
+    }
+
+    if(GameState.balance <= 0){
+      setTimeout(() => {
+        UI.showBanner("bankrupt", L.bankrupt());
+        Announce.assertive(L.bankrupt());
+        SpeechManager.speak(L.bankrupt());
+      }, 1500);
+    } else if(GameState.balance >= GameState.MILLIONAIRE_TARGET && !GameState._millionaireAnnounced){
+      GameState._millionaireAnnounced = true;
+      setTimeout(() => {
+        UI.showBanner("millionaire", L.millionaire());
+      }, 1500);
+    }
+
+    const maxBet = Math.max(GameState.MIN_BET, GameState.balance);
+    const betInput = document.getElementById("bet-input");
+    betInput.max = String(GameState.balance);
+    if(parseInt(betInput.value,10) > GameState.balance){
+      betInput.value = String(Math.min(GameState.balance, Math.max(GameState.MIN_BET, GameState.balance)));
+    }
+  }
+};
+
+/* =========================================================
+   EVENT WIRING
+   ========================================================= */
+function setBetValue(v){
+  const betInput = document.getElementById("bet-input");
+  v = Math.max(GameState.MIN_BET, Math.min(GameState.balance || GameState.MIN_BET, v));
+  betInput.value = String(v);
+}
+
+function wireEvents(){
+  UI.cacheEls();
+
+  document.getElementById("btn-deal").addEventListener("click", () => Round.startRound());
+  document.getElementById("btn-hit").addEventListener("click", () => Round.playerHit());
+  document.getElementById("btn-stand").addEventListener("click", () => Round.playerStand());
+  document.getElementById("btn-double").addEventListener("click", () => Round.playerDouble());
+
+  document.getElementById("btn-bet-min").addEventListener("click", () => setBetValue(GameState.MIN_BET));
+  document.getElementById("btn-bet-max").addEventListener("click", () => setBetValue(GameState.balance));
+  document.getElementById("btn-bet-inc").addEventListener("click", () => {
+    const cur = parseInt(document.getElementById("bet-input").value,10) || GameState.MIN_BET;
+    setBetValue(cur + 5);
+  });
+  document.getElementById("btn-bet-dec").addEventListener("click", () => {
+    const cur = parseInt(document.getElementById("bet-input").value,10) || GameState.MIN_BET;
+    setBetValue(cur - 5);
+  });
+
+  document.getElementById("btn-read-balance").addEventListener("click", () => {
+    const msg = STR[GameState.language].balance(GameState.balance);
+    Announce.polite(msg);
+    SpeechManager.speak(msg);
+  });
+
+  document.getElementById("btn-read-cards").addEventListener("click", () => readCards());
+
+  document.getElementById("btn-repeat").addEventListener("click", () => SpeechManager.repeat());
+
+  document.getElementById("btn-speech-toggle").addEventListener("click", () => {
+    GameState.speechOn = !GameState.speechOn;
+    GameState.savePrefs();
+    const btn = document.getElementById("btn-speech-toggle");
+    btn.setAttribute("aria-pressed", String(GameState.speechOn));
+    btn.textContent = "Speech: " + (GameState.speechOn ? "On" : "Off");
+    const msg = GameState.speechOn ? STR[GameState.language].speechOn() : STR[GameState.language].speechOff();
+    Announce.polite(msg);
+    if(GameState.speechOn) SpeechManager.speak(msg);
+  });
+
+  // Modals
+  wireDialog("dlg-settings", "btn-settings", "btn-settings-close");
+  wireDialog("dlg-achievements", "btn-achievements", "btn-achv-close");
+  wireDialog("dlg-history", "btn-history", "btn-history-close");
+  wireDialog("dlg-help", "btn-help", "btn-help-close");
+
+  document.getElementById("btn-read-history").addEventListener("click", () => readHistory());
+  document.getElementById("btn-reset-progress").addEventListener("click", resetProgress);
+
+  // Settings controls
+  wireOptionGroup("settings-language-group", "lang", (val) => setLanguage(val));
+  wireOptionGroup("settings-dealer-group", "dealer", (val) => setDealer(val));
+
+  document.getElementById("settings-speech-toggle").addEventListener("click", (e) => {
+    GameState.speechOn = !GameState.speechOn;
+    GameState.savePrefs();
+    e.target.setAttribute("aria-pressed", String(GameState.speechOn));
+    e.target.textContent = GameState.speechOn ? "On" : "Off";
+    document.getElementById("btn-speech-toggle").setAttribute("aria-pressed", String(GameState.speechOn));
+    document.getElementById("btn-speech-toggle").textContent = "Speech: " + (GameState.speechOn ? "On" : "Off");
+  });
+  document.getElementById("speech-rate").addEventListener("input", (e) => {
+    GameState.speechRate = parseFloat(e.target.value);
+    GameState.savePrefs();
+  });
+  document.getElementById("speech-volume").addEventListener("input", (e) => {
+    GameState.speechVolume = parseFloat(e.target.value);
+    GameState.savePrefs();
+  });
+  document.getElementById("settings-sound-toggle").addEventListener("click", (e) => {
+    GameState.soundOn = !GameState.soundOn;
+    GameState.savePrefs();
+    e.target.setAttribute("aria-pressed", String(GameState.soundOn));
+    e.target.textContent = GameState.soundOn ? "On" : "Off";
+  });
+  document.getElementById("settings-contrast-toggle").addEventListener("click", (e) => {
+    GameState.highContrast = !GameState.highContrast;
+    GameState.savePrefs();
+    UI.applyVisualPrefs();
+    e.target.setAttribute("aria-pressed", String(GameState.highContrast));
+    e.target.textContent = GameState.highContrast ? "On" : "Off";
+  });
+  document.getElementById("settings-largetext-toggle").addEventListener("click", (e) => {
+    GameState.largeText = !GameState.largeText;
+    GameState.savePrefs();
+    UI.applyVisualPrefs();
+    e.target.setAttribute("aria-pressed", String(GameState.largeText));
+    e.target.textContent = GameState.largeText ? "On" : "Off";
+  });
+  document.getElementById("settings-motion-toggle").addEventListener("click", (e) => {
+    GameState.reducedMotion = !GameState.reducedMotion;
+    GameState.savePrefs();
+    UI.applyVisualPrefs();
+    e.target.setAttribute("aria-pressed", String(GameState.reducedMotion));
+    e.target.textContent = GameState.reducedMotion ? "On" : "Off";
+  });
+
+  // Setup dialog
+  wireOptionGroup("setup-language-group", "lang", (val) => setLanguage(val, true));
+  wireOptionGroup("setup-dealer-group", "dealer", (val) => setDealer(val, true));
+  document.getElementById("btn-setup-start").addEventListener("click", () => {
+    GameState.setupDone = true;
+    GameState.savePrefs();
+    document.getElementById("dlg-setup").close();
+    const dealerName = STR[GameState.language].dealerLabel(GameState.dealerGender);
+    UI.renderAll();
+    Announce.polite(STR[GameState.language].welcome(dealerName));
+    SpeechManager.speak(STR[GameState.language].welcome(dealerName));
+    document.getElementById("btn-deal").focus();
+  });
+
+  document.getElementById("bet-input").addEventListener("keydown", (e) => e.stopPropagation());
+
+  document.addEventListener("keydown", handleKeyboardShortcut);
+}
+
+function wireOptionGroup(groupId, dataAttr, onSelect){
+  const group = document.getElementById(groupId);
+  if(!group) return;
+  group.querySelectorAll("[data-" + dataAttr + "]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      group.querySelectorAll("[data-" + dataAttr + "]").forEach(b => b.setAttribute("aria-pressed","false"));
+      btn.setAttribute("aria-pressed","true");
+      onSelect(btn.getAttribute("data-" + dataAttr));
+    });
+  });
+}
+
+function setLanguage(lang, silent){
+  GameState.language = lang;
+  GameState.savePrefs();
+  document.documentElement.lang = lang === "hi" ? "hi" : "en";
+  syncOptionGroups();
+  UI.renderAll();
+  if(!silent){
+    const msg = STR[lang].settingsSaved();
+    Announce.polite(msg);
+    SpeechManager.speak(msg);
+  }
+}
+
+function setDealer(gender, silent){
+  GameState.dealerGender = gender;
+  GameState.savePrefs();
+  syncOptionGroups();
+  UI.renderAll();
+  if(!silent){
+    const msg = STR[GameState.language].settingsSaved();
+    Announce.polite(msg);
+    SpeechManager.speak(msg);
+  }
+}
+
+function syncOptionGroups(){
+  ["setup-language-group","settings-language-group"].forEach(id => {
+    const g = document.getElementById(id);
+    if(!g) return;
+    g.querySelectorAll("[data-lang]").forEach(b => {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === GameState.language));
+    });
+  });
+  ["setup-dealer-group","settings-dealer-group"].forEach(id => {
+    const g = document.getElementById(id);
+    if(!g) return;
+    g.querySelectorAll("[data-dealer]").forEach(b => {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-dealer") === GameState.dealerGender));
+    });
+  });
+  const speechBtn = document.getElementById("settings-speech-toggle");
+  if(speechBtn){ speechBtn.setAttribute("aria-pressed", String(GameState.speechOn)); speechBtn.textContent = GameState.speechOn ? "On" : "Off"; }
+  const soundBtn = document.getElementById("settings-sound-toggle");
+  if(soundBtn){ soundBtn.setAttribute("aria-pressed", String(GameState.soundOn)); soundBtn.textContent = GameState.soundOn ? "On" : "Off"; }
+  const contrastBtn = document.getElementById("settings-contrast-toggle");
+  if(contrastBtn){ contrastBtn.setAttribute("aria-pressed", String(GameState.highContrast)); contrastBtn.textContent = GameState.highContrast ? "On" : "Off"; }
+  const largeBtn = document.getElementById("settings-largetext-toggle");
+  if(largeBtn){ largeBtn.setAttribute("aria-pressed", String(GameState.largeText)); largeBtn.textContent = GameState.largeText ? "On" : "Off"; }
+  const motionBtn = document.getElementById("settings-motion-toggle");
+  if(motionBtn){ motionBtn.setAttribute("aria-pressed", String(GameState.reducedMotion)); motionBtn.textContent = GameState.reducedMotion ? "On" : "Off"; }
+  document.getElementById("speech-rate").value = GameState.speechRate;
+  document.getElementById("speech-volume").value = GameState.speechVolume;
+}
+
+function wireDialog(dialogId, openBtnId, closeBtnId){
+  const dialog = document.getElementById(dialogId);
+  const openBtn = document.getElementById(openBtnId);
+  const closeBtn = document.getElementById(closeBtnId);
+  let lastFocused = null;
+
+  openBtn.addEventListener("click", () => {
+    lastFocused = document.activeElement;
+    if(dialogId === "dlg-achievements") UI.renderAchievements();
+    if(dialogId === "dlg-history") UI.renderHistory();
+    dialog.showModal();
+    const firstFocusable = dialog.querySelector("button, input, select");
+    if(firstFocusable) firstFocusable.focus();
+  });
+  closeBtn.addEventListener("click", () => {
+    dialog.close();
+  });
+  dialog.addEventListener("close", () => {
+    if(lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
+  });
+  dialog.addEventListener("cancel", () => {
+    // Escape key triggers this natively for <dialog>; allow default close behavior
+  });
+}
+
+function readCards(){
+  const L = STR[GameState.language];
+  if(!GameState.roundActive && !GameState.playerHand.length){
+    SpeechManager.speak(L.gameOverNoBet());
+    return;
+  }
+  const dealerCardLabel = GameState.dealerHoleHidden
+    ? BlackjackEngine.cardLabel(GameState.dealerHand[0], GameState.language)
+    : GameState.dealerHand.map(c => BlackjackEngine.cardLabel(c, GameState.language)).join(GameState.language === "hi" ? " और " : " and ");
+  const playerCardsLabel = GameState.playerHand.map(c => BlackjackEngine.cardLabel(c, GameState.language)).join(GameState.language === "hi" ? " और " : " and ");
+  const total = BlackjackEngine.handValue(GameState.playerHand);
+  const msg = L.cardsRead(dealerCardLabel, playerCardsLabel, total);
+  Announce.polite(msg);
+  SpeechManager.speak(msg);
+}
+
+function readHistory(){
+  const L = STR[GameState.language];
+  if(!GameState.history.length){
+    SpeechManager.speak(L.noHistory());
+    return;
+  }
+  const recent = GameState.history.slice(-5).reverse();
+  const intro = L.historyIntro(recent.length);
+  const lines = recent.map(r => {
+    const changeText = r.change >= 0 ? `+$${r.change}` : `-$${Math.abs(r.change)}`;
+    return `Round ${r.round}: bet $${r.bet}, ${r.result}, change ${changeText}, balance $${r.balanceAfter}.`;
+  });
+  const full = intro + " " + lines.join(" ");
+  Announce.polite(full);
+  SpeechManager.speak(full);
+}
+
+function resetProgress(){
+  const confirmed = window.confirm("This will erase your balance, achievements, and history, and start over with $100. This cannot be undone. Continue?");
+  if(!confirmed) return;
+
+  GameState.balance = 100;
+  GameState.bet = 10;
+  GameState.streak = 0;
+  GameState.achievements = { FIRST_WIN:false, HOT_STREAK:false, HIGH_ROLLER:false, MILLIONAIRE:false, BANKRUPT:false };
+  GameState.history = [];
+  GameState.roundCount = 0;
+  GameState.roundActive = false;
+  GameState.playerHand = [];
+  GameState.dealerHand = [];
+  GameState.deck = Deck.fresh();
+  GameState._millionaireAnnounced = false;
+  GameState.currentLevelIndex = 0;
+  LevelManager.applyToGameState();
+
+  GameState.saveCore();
+  UI.clearBanner();
+  UI.renderAll();
+  setBetValue(10);
+
+  const msg = STR[GameState.language].progressReset();
+  Announce.assertive(msg);
+  SpeechManager.speak(msg);
+}
+
+function handleKeyboardShortcut(e){
+  const active = document.activeElement;
+  const tag = active && active.tagName ? active.tagName.toLowerCase() : "";
+  const isTyping = tag === "input" || tag === "textarea" || tag === "select" || (active && active.isContentEditable);
+
+  const anyDialogOpen = Array.from(document.querySelectorAll("dialog")).some(d => d.open);
+
+  if(e.key === "Escape"){
+    document.querySelectorAll("dialog[open]").forEach(d => d.close());
+    return;
+  }
+
+  if(isTyping || anyDialogOpen) return;
+
+  switch(e.key.toLowerCase()){
+    case "h":
+      if(!document.getElementById("btn-hit").disabled) Round.playerHit();
+      break;
+    case "s":
+      if(!document.getElementById("btn-stand").disabled) Round.playerStand();
+      break;
+    case "d":
+      if(!document.getElementById("btn-double").disabled) Round.playerDouble();
+      break;
+    case "b":
+      document.getElementById("btn-read-balance").click();
+      break;
+    case "c":
+      readCards();
+      break;
+    case "r":
+      SpeechManager.repeat();
+      break;
+    case "m":
+      document.getElementById("btn-speech-toggle").click();
+      break;
+    case "p":
+      SpeechManager.pauseResume();
+      break;
+    case "n":
+      if(!document.getElementById("btn-deal").disabled) Round.startRound();
+      break;
+    default:
+      break;
+  }
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function init(){
+  GameState.load();
+  LevelManager.applyToGameState();
+  SpeechManager.init();
+  UI.applyVisualPrefs();
+  document.documentElement.lang = GameState.language === "hi" ? "hi" : "en";
+
+  wireEvents();
+  syncOptionGroups();
+
+  GameState.deck = Deck.fresh();
+  GameState.playerHand = [];
+  GameState.dealerHand = [];
+  GameState.roundActive = false;
+
+  setBetValue(Math.min(10, Math.max(GameState.MIN_BET, GameState.balance)));
+  document.getElementById("bet-input").max = String(GameState.balance);
+  document.getElementById("bet-input").min = String(GameState.MIN_BET);
+
+  UI.renderAll();
+
+  if(!GameState.setupDone){
+    document.getElementById("dlg-setup").showModal();
+  } else {
+    const dealerName = STR[GameState.language].dealerLabel(GameState.dealerGender);
+    UI.setDealerLine(STR[GameState.language].welcome(dealerName));
+    if(GameState.balance <= 0){
+      UI.showBanner("bankrupt", STR[GameState.language].bankrupt());
+    }
+  }
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
